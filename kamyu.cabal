@@ -1,0 +1,82 @@
+cabal-version: 2.2
+
+-- This file has been generated from package.yaml by hpack version 0.37.0.
+--
+-- see: https://github.com/sol/hpack
+
+name:           kamyu
+version:        0.1.0.0
+description:    Please see the README on GitHub at <https://github.com/githubuser/kamyu#readme>
+homepage:       https://github.com/naku0/kamyu#readme
+bug-reports:    https://github.com/naku0/kamyu/issues
+author:         naku0
+maintainer:     example@example.com
+copyright:      2025 naku0
+license:        BSD-3-Clause
+license-file:   LICENSE
+build-type:     Simple
+extra-source-files:
+    README.md
+    CHANGELOG.md
+
+source-repository head
+  type: git
+  location: https://github.com/naku0/kamyu
+
+library
+  exposed-modules:
+      Web.Kamyu.Core
+      Web.Kamyu.Server
+      Web.Kamyu.Combinators
+  other-modules:
+      Web.Kamyu
+      Web.Kamyu.Status
+      Paths_kamyu
+  autogen-modules:
+      Paths_kamyu
+  hs-source-dirs:
+      src
+  ghc-options: -Wall -Wcompat -Widentities -Wincomplete-record-updates -Wincomplete-uni-patterns -Wmissing-export-lists -Wmissing-home-modules -Wpartial-fields -Wredundant-constraints
+  build-depends:
+      base >=4.16 && <5
+    , bytestring
+    , http-types
+    , mtl
+    , text
+    , transformers
+    , wai
+    , warp
+  default-language: Haskell2010
+
+executable kamyu-exe
+  main-is: Main.hs
+  other-modules:
+      Paths_kamyu
+  autogen-modules:
+      Paths_kamyu
+  hs-source-dirs:
+      app
+  ghc-options: -Wall -Wcompat -Widentities -Wincomplete-record-updates -Wincomplete-uni-patterns -Wmissing-export-lists -Wmissing-home-modules -Wpartial-fields -Wredundant-constraints -threaded -rtsopts -with-rtsopts=-N
+  build-depends:
+      base
+    , bytestring
+    , http-types
+    , kamyu
+    , wai
+    , warp
+  default-language: Haskell2010
+
+test-suite kamyu-test
+  type: exitcode-stdio-1.0
+  main-is: Spec.hs
+  other-modules:
+      Paths_kamyu
+  autogen-modules:
+      Paths_kamyu
+  hs-source-dirs:
+      test
+  ghc-options: -Wall -Wcompat -Widentities -Wincomplete-record-updates -Wincomplete-uni-patterns -Wmissing-export-lists -Wmissing-home-modules -Wpartial-fields -Wredundant-constraints -threaded -rtsopts -with-rtsopts=-N
+  build-depends:
+      base >=4.7 && <5
+    , kamyu
+  default-language: Haskell2010

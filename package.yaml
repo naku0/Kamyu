@@ -1,0 +1,77 @@
+name:                kamyu
+version:             0.1.0.0
+github:              "naku0/kamyu"
+license:             BSD-3-Clause
+author:              "naku0"
+maintainer:          "example@example.com"
+copyright:           "2025 naku0"
+
+extra-source-files:
+- README.md
+- CHANGELOG.md
+
+# Metadata used when publishing your package
+# synopsis:            Short description of your package
+# category:            Web
+
+# To avoid duplicated efforts in documentation and dealing with the
+# complications of embedding Haddock markup inside cabal files, it is
+# common to point users to the README.md file.
+description:         Please see the README on GitHub at <https://github.com/githubuser/kamyu#readme>
+
+dependencies:
+- base >= 4.7 && < 5
+
+ghc-options:
+- -Wall
+- -Wcompat
+- -Widentities
+- -Wincomplete-record-updates
+- -Wincomplete-uni-patterns
+- -Wmissing-export-lists
+- -Wmissing-home-modules
+- -Wpartial-fields
+- -Wredundant-constraints
+
+library:
+  source-dirs: src
+  exposed-modules:
+    - Web.Kamyu.Core
+    - Web.Kamyu.Server
+    - Web.Kamyu.Combinators
+  dependencies:
+    - base >= 4.16 && < 5
+    - transformers
+    - mtl
+    - wai
+    - warp
+    - http-types
+    - text
+    - bytestring
+
+executables:
+  kamyu-exe:
+    main:                Main.hs
+    source-dirs:         app
+    ghc-options:
+    - -threaded
+    - -rtsopts
+    - -with-rtsopts=-N
+    dependencies:
+    - kamyu
+    - base
+    - warp
+    - wai
+    - http-types
+    - bytestring
+
+tests:
+  kamyu-test:
+    main:                Spec.hs
+    source-dirs:         test
+    ghc-options:
+    - -threaded
+    - -rtsopts
+    - -with-rtsopts=-N
+    dependencies:
+    - kamyu
