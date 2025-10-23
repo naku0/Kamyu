@@ -15,21 +15,22 @@ module Main where
 
 import Kamyu
 
+homeHandler :: KamyuHandler
+homeHandler _ = do
+     putStrLn "Calling home"
+     return $ ok "Home is here"
+
 main :: IO ()
 main = do
     putStrLn "=== KAMYU START ==="
     runKamyu 8080 $ do
+
         get "/" $ \_ -> do
             putStrLn "⭐ Handler for GET / called!"
-            return $ responseLBS status200 [] "SUCCESS! Kamyu is working! 🎉"
-        
-        get "/home" $ \_ -> do
-            putStrLn "Calling home"
-            return $ responseLBS status200 [] "Home is here"
-        
-        get "/users" $ \_ -> do
-            putStrLn "Getting users"
-            return $ responseLBS status200 [("Content-Type", "application/json")] "{\"users\": []}"
+            return $ ok "SUCCESS! Kamyu is working!"
+
+        get "/home" homeHandler
+
 ```
 
 ## 🎯 Основные возможности
