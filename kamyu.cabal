@@ -28,9 +28,9 @@ library
       Web.Kamyu.Core
       Web.Kamyu.Server
       Web.Kamyu.Combinators
+      Web.Kamyu.Status
   other-modules:
       Web.Kamyu
-      Web.Kamyu.Status
       Paths_kamyu
   autogen-modules:
       Paths_kamyu

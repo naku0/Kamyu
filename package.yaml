@@ -39,6 +39,7 @@ library:
     - Web.Kamyu.Core
     - Web.Kamyu.Server
     - Web.Kamyu.Combinators
+    - Web.Kamyu.Status
   dependencies:
     - base >= 4.16 && < 5
     - transformers
