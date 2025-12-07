@@ -6,10 +6,10 @@ import Web.Kamyu.Server (runKamyu)
 import Web.Kamyu.Combinators ( get )
 import Web.Kamyu.Status (ok)
 import Web.Kamyu.Core (KamyuHandler)
+import Web.Kamyu.Params (textDef)
 
 homeHandler :: KamyuHandler
 homeHandler _ = do
-     putStrLn "Calling home"
      return $ ok "Home is here"
 
 main :: IO ()
@@ -23,4 +23,8 @@ main = do
 
         get "/home" homeHandler
 
+        get "/hello" $ \req -> do
+            let name = textDef "World" "name" req
+            return $ ok $ "Hello, " ++ name ++ "!"
 
+        

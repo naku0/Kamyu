@@ -1,6 +1,6 @@
 cabal-version: 2.2
 
--- This file has been generated from package.yaml by hpack version 0.37.0.
+-- This file has been generated from package.yaml by hpack version 0.38.1.
 --
 -- see: https://github.com/sol/hpack
 
@@ -29,6 +29,9 @@ library
       Web.Kamyu.Server
       Web.Kamyu.Combinators
       Web.Kamyu.Status
+      Web.Kamyu.Params
+      Web.Kamyu.DSL
+      Web.Kamyu.Utils
   other-modules:
       Web.Kamyu
       Paths_kamyu

@@ -12,15 +12,15 @@ import Web.Kamyu.Core
       Route(routePath, routeHandler, routeMethod),
       KamyuHandler )
 import Network.Wai
-    ( Request(pathInfo, requestMethod), Application, responseLBS )
+    ( Request(pathInfo, requestMethod), Application )
 import Network.Wai.Handler.Warp (run)
-import Network.HTTP.Types (status404)
 import Data.List (find)
 import qualified Data.Text as T
 import Data.Maybe (isJust)
 import Control.Monad.Trans.State (runStateT)
 import Control.Monad.Trans.Except (runExceptT)
 import qualified Data.ByteString.Char8 as BS
+import Web.Kamyu.Status (notFound)
 
 runKamyu :: Int -> KamyuBuilder -> IO ()
 runKamyu port builder = do
@@ -56,7 +56,7 @@ createApp state request respond = do
             respond response
         Nothing -> do
             putStrLn "❌ No handler found"
-            respond $ responseLBS status404 [] "Not found 404"
+            respond $ notFound "Not found 404"
 
 
 findMatchingRoute :: [Route] -> Request -> Maybe KamyuHandler

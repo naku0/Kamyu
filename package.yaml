@@ -40,9 +40,13 @@ library:
     - Web.Kamyu.Server
     - Web.Kamyu.Combinators
     - Web.Kamyu.Status
+    - Web.Kamyu.Params
+    - Web.Kamyu.DSL
+    - Web.Kamyu.Utils
   dependencies:
     - base >= 4.16 && < 5
     - transformers
+    - text
     - mtl
     - wai
     - warp
