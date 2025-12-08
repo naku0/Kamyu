@@ -6,6 +6,7 @@ module Web.Kamyu(
     module Web.Kamyu.DSL,
     module Web.Kamyu.Params,
     module Web.Kamyu.Utils
+    , module Web.Kamyu.Json
 ) where
     
 import Web.Kamyu.Core
@@ -15,3 +16,4 @@ import Web.Kamyu.Status
 import Web.Kamyu.DSL
 import Web.Kamyu.Params
 import Web.Kamyu.Utils
+import Web.Kamyu.Json
