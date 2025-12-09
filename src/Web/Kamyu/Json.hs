@@ -59,7 +59,7 @@ jsonWithStatus handler = jsonWithStatusRequest (\body _ -> handler body)
 jsonWithStatusRequest :: (FromJSON body, ToJSON result)
                       => (body -> Request -> IO (Status, result))
                       -> KamyuHandler
-jsonWithStatusRequest handler request = do
+jsonWithStatusRequest handler request params = do  -- ← Добавили params
     parsed <- jsonBody request
     case parsed of
         Left err -> pure $ badRequest (jsonErrorMessage err)

@@ -14,11 +14,6 @@ module Main where
 
 import Kamyu
 
-homeHandler :: KamyuHandler
-homeHandler _ = do
-     putStrLn "Calling home"
-     return $ ok "Home is here"
-
 main :: IO ()
 main = do
     putStrLn "=== KAMYU START ==="
@@ -28,30 +23,36 @@ main = do
             putStrLn "⭐ Handler for GET / called!"
             return $ ok "SUCCESS! Kamyu is working!"
 
-        get "/home" homeHandler
-
 ```
 
-## 🎯 Основные возможности
+## 📖 Документация
 
 1. Маршрутизация
 
 ```haskell
-get "/users" usersHandler
+get "/" homeHandler
 post "/users" createUserHandler
-put "/users/:id" updateUserHandler
-delete "/users/:id" deleteUserHandler
+get "/users/:id" getUserHandler
 ```
 
-2. Простые обработчики
+2. Параметры пути
 
 ```haskell
-helloHandler :: KamyuHandler
-helloHandler _ = do
-    return $ responseLBS status200 [] "Hello World!"
+get "/user/:id" $ \_ params -> do
+    let userId = pathParamDef "0" "id" params
+    return $ ok $ "User ID: " ++ userId
 ```
 
-3. JSON-обработчики (по мотивам Spring)
+3. Query параметры
+
+```haskell
+get "/search" $ \req params -> do
+    let query = getString "q" req `orElse` ""
+        page = getInt "page" req `orElse` 1
+    return $ ok $ "Search: " ++ query ++ ", page: " ++ show page
+```
+
+4. JSON-обработчики (по мотивам Spring)
 
 ```haskell
 
@@ -95,9 +96,9 @@ Kamyu автоматически сериализует результат в JS
 
 ✅ Простые HTTP-ответы
 
-🚧 Удобные хелперы для статусов (ok, created, notFound)
+⏳ Удобные хелперы для статусов (ok, created, notFound)
 
-🚧 Парсинг параметров запроса
+✅ Парсинг параметров запроса
 
 🚧 Middleware поддержка
 
