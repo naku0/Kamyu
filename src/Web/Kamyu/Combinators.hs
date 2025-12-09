@@ -1,4 +1,3 @@
-
 module Web.Kamyu.Combinators
     (get, post, put, delete, patch
     , path, capture

@@ -31,9 +31,10 @@ library
       Web.Kamyu.Status
       Web.Kamyu.Params
       Web.Kamyu.DSL
+      Web.Kamyu.Json
       Web.Kamyu.Utils
-  other-modules:
       Web.Kamyu
+  other-modules:
       Paths_kamyu
   autogen-modules:
       Paths_kamyu
@@ -41,7 +42,8 @@ library
       src
   ghc-options: -Wall -Wcompat -Widentities -Wincomplete-record-updates -Wincomplete-uni-patterns -Wmissing-export-lists -Wmissing-home-modules -Wpartial-fields -Wredundant-constraints
   build-depends:
-      base >=4.16 && <5
+      aeson
+    , base >=4.16 && <5
     , bytestring
     , http-types
     , mtl
@@ -61,7 +63,8 @@ executable kamyu-exe
       app
   ghc-options: -Wall -Wcompat -Widentities -Wincomplete-record-updates -Wincomplete-uni-patterns -Wmissing-export-lists -Wmissing-home-modules -Wpartial-fields -Wredundant-constraints -threaded -rtsopts -with-rtsopts=-N
   build-depends:
-      base
+      aeson
+    , base
     , bytestring
     , http-types
     , kamyu

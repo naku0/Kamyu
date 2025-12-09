@@ -1,5 +1,6 @@
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE DeriveGeneric #-}
+{-# LANGUAGE BlockArguments #-}
 
 module Main(main) where
 
@@ -7,15 +8,15 @@ import Web.Kamyu.Server (runKamyu)
 import Web.Kamyu.Combinators ( get, post )
 import Web.Kamyu.Status (ok)
 import Web.Kamyu.Core (KamyuHandler)
-import Web.Kamyu.Params (textDef)
 import Web.Kamyu.Json (jsonWithStatus)
 import GHC.Generics (Generic)
 import Data.Aeson (FromJSON, ToJSON)
 import Network.HTTP.Types (Status, status201)
+import Data.Maybe (fromMaybe)
+import Web.Kamyu.Params (orElse, getInt, getString)
 
 homeHandler :: KamyuHandler
-homeHandler _ = do
-     return $ ok "Home is here"
+homeHandler _ _ = return $ ok $ "Home is here"
 
 data CreatePerson = CreatePerson
     { name :: String
@@ -38,21 +39,26 @@ createPerson CreatePerson{name = personName, age = personAgeVal} = do
     let payload = Person 1 personName personAgeVal
     return (status201, payload)
 
+pathParamDef :: String -> String -> [(String, String)] -> String
+pathParamDef def key params = Data.Maybe.fromMaybe def (lookup key params)
+
 main :: IO ()
 main = do
     putStrLn "=== KAMYU START ==="
     runKamyu 8080 $ do
-
-        get "/" $ \_ -> do
+        get "/" $ \_ _ -> do
             putStrLn "⭐ Handler for GET / called!"
-            return $ ok "SUCCESS! Kamyu is working!"
+            return $ ok $ "SUCCESS! Kamyu is working!"
 
         get "/home" homeHandler
 
-        get "/hello" $ \req -> do
-            let name = textDef "World" "name" req
-            return $ ok $ "Hello, " ++ name ++ "!"
+        get "/user/:id" $ \_ params -> do
+            let userId = pathParamDef "0" "id" params
+            return $ ok $ "User ID: " ++ userId
+
+        get "/search" $ \req params -> do
+            let query = getString "q" req `orElse` ""
+                page = getInt "page" req `orElse` 1
+            return $ ok $ "Search: " ++ query ++ ", page: " ++ show page
 
         post "/people" $ jsonWithStatus createPerson
-
-        
