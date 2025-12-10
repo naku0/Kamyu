@@ -56,10 +56,12 @@ get "/search" $ \req params -> do
 
 ```haskell
 
-import Web.Kamyu.Json (jsonWithStatus)
+import Web.Kamyu.Json (jsonHandler)
+import Web.Kamyu.Params (orElse, getString, pathParamDef)
 import Data.Aeson (FromJSON, ToJSON)
 import GHC.Generics (Generic)
 import Network.HTTP.Types (Status, status201)
+import Network.Wai (Request)
 
 -- Что ожидаем получить в теле POST-запроса
 data CreatePerson = CreatePerson { name :: String, age :: Int }
@@ -71,24 +73,25 @@ data Person = Person { identifier :: Int, fullName :: String, personAge :: Int }
     deriving (Generic)
 instance ToJSON Person
 
--- Обработчик: принимает CreatePerson, возвращает IO (Status, Person)
-createPersonHandler :: CreatePerson -> IO (Status, Person)
-createPersonHandler body = do
+-- Универсальный обработчик: JSON + query + path params
+createPersonHandler :: CreatePerson -> Request -> [(String, String)] -> IO (Status, Person)
+createPersonHandler body req pathParams = do
     let personName = name body
         personAge = age body
-    return (status201, Person 1 personName personAge)
+        sourceTag = orElse (getString "source" req) "api"
+        citySlug = pathParamDef "unknown" "city" pathParams
+    putStrLn $ "Source tag: " ++ sourceTag ++ ", city: " ++ citySlug
+    return (status201, Person 1 (personName ++ " from " ++ citySlug) personAge)
 
--- jsonWithStatus createPersonHandler :: KamyuHandler
-post "/people" $ jsonWithStatus createPersonHandler
+-- jsonHandler createPersonHandler :: KamyuHandler
+post "/cities/:city/people" $ jsonHandler createPersonHandler
 ```
 
-`jsonWithStatus` сам вызывает `createPersonHandler`, 
-предварительно десериализовав тело запроса в `CreatePerson`. 
-Обработчик возвращает пару `(HTTP Status, Person)`, 
-что позволяет выбрать нужный код ответа (например, 201). 
-Kamyu автоматически сериализует результат в JSON 
-и выставляет `Content-Type: application/json`. 
-Для случая по умолчанию (HTTP 200) используйте `json`
+`jsonHandler` сам десериализует тело запроса, передаёт распарсенный `CreatePerson`,
+исходный `Request` и path params. Обработчик возвращает пару `(HTTP Status, Person)` —
+можно игнорировать дополнительные аргументы или использовать их для чтения query
+параметров, заголовков и динамических сегментов пути. Kamyu автоматически
+сериализует результат и выставляет `Content-Type: application/json`.
 
 ## 🛣️ Roadmap
 

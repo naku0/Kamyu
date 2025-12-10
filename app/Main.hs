@@ -8,12 +8,12 @@ import Web.Kamyu.Server (runKamyu)
 import Web.Kamyu.Combinators ( get, post )
 import Web.Kamyu.Status (ok)
 import Web.Kamyu.Core (KamyuHandler)
-import Web.Kamyu.Json (jsonWithStatus)
+import Web.Kamyu.Json (jsonHandler)
 import GHC.Generics (Generic)
 import Data.Aeson (FromJSON, ToJSON)
 import Network.HTTP.Types (Status, status201)
-import Data.Maybe (fromMaybe)
-import Web.Kamyu.Params (orElse, getInt, getString)
+import Network.Wai (Request)
+import Web.Kamyu.Params (orElse, getInt, getString, pathParamDef)
 
 homeHandler :: KamyuHandler
 homeHandler _ _ = return $ ok $ "Home is here"
@@ -33,14 +33,14 @@ data Person = Person
 
 instance ToJSON Person
 
-createPerson :: CreatePerson -> IO (Status, Person)
-createPerson CreatePerson{name = personName, age = personAgeVal} = do
-    putStrLn $ "👤 Creating person: " ++ personName
-    let payload = Person 1 personName personAgeVal
+createPerson :: CreatePerson -> Request -> [(String, String)] -> IO (Status, Person)
+createPerson CreatePerson{name = personName, age = personAgeVal} req pathParams = do
+    let city = pathParamDef "unknown" "city" pathParams
+        source = orElse (getString "source" req) "api"
+        decoratedName = personName ++ " from " ++ city
+    putStrLn $ "👤 Creating person: " ++ decoratedName ++ " (source=" ++ source ++ ")"
+    let payload = Person 1 decoratedName personAgeVal
     return (status201, payload)
-
-pathParamDef :: String -> String -> [(String, String)] -> String
-pathParamDef def key params = Data.Maybe.fromMaybe def (lookup key params)
 
 main :: IO ()
 main = do
@@ -61,4 +61,4 @@ main = do
                 page = getInt "page" req `orElse` 1
             return $ ok $ "Search: " ++ query ++ ", page: " ++ show page
 
-        post "/people" $ jsonWithStatus createPerson
+        post "/cities/:city/people" $ jsonHandler createPerson
