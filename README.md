@@ -52,26 +52,25 @@ get "/search" $ \req params -> do
     return $ ok $ "Search: " ++ query ++ ", page: " ++ show page
 ```
 
-4. JSON-обработчики (по мотивам Spring)
+4. JSON-обработчики
 
 ```haskell
+{-# LANGUAGE DeriveGeneric #-}
+{-# LANGUAGE DeriveAnyClass #-}
 
-import Web.Kamyu.Json (jsonHandler)
+import Web.Kamyu.Json (jsonHandler, JsonCodec)
 import Web.Kamyu.Params (orElse, getString, pathParamDef)
-import Data.Aeson (FromJSON, ToJSON)
 import GHC.Generics (Generic)
 import Network.HTTP.Types (Status, status201)
 import Network.Wai (Request)
 
 -- Что ожидаем получить в теле POST-запроса
 data CreatePerson = CreatePerson { name :: String, age :: Int }
-    deriving (Generic)
-instance FromJSON CreatePerson
+    deriving (Generic, JsonCodec)
 
 -- Что вернём клиенту
 data Person = Person { identifier :: Int, fullName :: String, personAge :: Int }
-    deriving (Generic)
-instance ToJSON Person
+    deriving (Generic, JsonCodec)
 
 -- Универсальный обработчик: JSON + query + path params
 createPersonHandler :: CreatePerson -> Request -> [(String, String)] -> IO (Status, Person)

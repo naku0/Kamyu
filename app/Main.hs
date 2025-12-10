@@ -1,5 +1,6 @@
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE DeriveGeneric #-}
+{-# LANGUAGE DeriveAnyClass #-}
 {-# LANGUAGE BlockArguments #-}
 
 module Main(main) where
@@ -8,9 +9,8 @@ import Web.Kamyu.Server (runKamyu)
 import Web.Kamyu.Combinators ( get, post )
 import Web.Kamyu.Status (ok)
 import Web.Kamyu.Core (KamyuHandler)
-import Web.Kamyu.Json (jsonHandler)
+import Web.Kamyu.Json (jsonHandler, JsonCodec)
 import GHC.Generics (Generic)
-import Data.Aeson (FromJSON, ToJSON)
 import Network.HTTP.Types (Status, status201)
 import Network.Wai (Request)
 import Web.Kamyu.Params (orElse, getInt, getString, pathParamDef)
@@ -21,17 +21,13 @@ homeHandler _ _ = return $ ok $ "Home is here"
 data CreatePerson = CreatePerson
     { name :: String
     , age :: Int
-    } deriving (Show, Generic)
-
-instance FromJSON CreatePerson
+    } deriving (Show, Generic, JsonCodec)
 
 data Person = Person
     { identifier :: Int
     , fullName :: String
     , personAge :: Int
-    } deriving (Show, Generic)
-
-instance ToJSON Person
+    } deriving (Show, Generic, JsonCodec)
 
 createPerson :: CreatePerson -> Request -> [(String, String)] -> IO (Status, Person)
 createPerson CreatePerson{name = personName, age = personAgeVal} req pathParams = do

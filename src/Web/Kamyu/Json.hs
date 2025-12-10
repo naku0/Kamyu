@@ -1,4 +1,9 @@
 {-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE DefaultSignatures #-}
+{-# LANGUAGE FlexibleContexts #-}
+{-# LANGUAGE FlexibleInstances #-}
+{-# LANGUAGE TypeFamilies #-}
+{-# LANGUAGE UndecidableInstances #-}
 
 module Web.Kamyu.Json
     ( JsonError(..)
@@ -6,13 +11,17 @@ module Web.Kamyu.Json
     , jsonResponse
     , jsonResponseWith
     , jsonHandler
+    , JsonCodec(..)
     ) where
 
-import Data.Aeson (FromJSON, ToJSON, eitherDecode, encode)
+import Data.Aeson ( FromJSON(..), ToJSON(..), Value, eitherDecode, encode
+                  , defaultOptions, genericToJSON, genericParseJSON)
+import Data.Aeson.Types (Parser, GFromJSON, GToJSON, Zero)
 import Network.HTTP.Types (Status, hContentType, status200)
 import Network.Wai (Request, Response, responseLBS, strictRequestBody)
 import Web.Kamyu.Core (KamyuHandler)
 import Web.Kamyu.Status (badRequest)
+import GHC.Generics (Generic, Rep)
 
 -- | Possible errors when we parse JSON request bodies
 newtype JsonError = JsonDecodeError String deriving (Show, Eq)
@@ -48,3 +57,19 @@ jsonHandler handler request pathParams = do
 
 jsonErrorMessage :: JsonError -> String
 jsonErrorMessage (JsonDecodeError msg) = "Failed to decode JSON: " ++ msg
+
+-- | Type class, which generates parsers and serialization.
+class JsonCodec a where
+    toJson :: a -> Value
+    default toJson :: (Generic a, GToJSON Zero (Rep a)) => a -> Value
+    toJson = genericToJSON defaultOptions
+
+    parseJson :: Value -> Parser a
+    default parseJson :: (Generic a, GFromJSON Zero (Rep a)) => Value -> Parser a
+    parseJson = genericParseJSON defaultOptions
+
+instance JsonCodec a => ToJSON a where
+    toJSON = toJson
+
+instance  JsonCodec a => FromJSON a where
+    parseJSON = parseJson
