@@ -1,4 +1,3 @@
-{-# LANGUAGE OverloadedStrings #-}
 
 module Web.Kamyu.DSL
     ( module Web.Kamyu.Params

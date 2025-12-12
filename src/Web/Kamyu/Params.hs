@@ -1,4 +1,3 @@
-{-# LANGUAGE OverloadedStrings #-}
 
 module Web.Kamyu.Params
     (
@@ -39,7 +38,7 @@ rawParam key req =
 
 -- | Get path parameter from list
 pathParam :: String -> [(String, String)] -> Maybe String
-pathParam name = lookup name
+pathParam = lookup
 
 -- | Get path parameter with default value
 pathParamDef :: String -> String -> [(String, String)] -> String
