@@ -44,6 +44,7 @@ library:
     - Web.Kamyu.DSL
     - Web.Kamyu.Json
     - Web.Kamyu.Utils
+    - Web.Kamyu.Middleware
     - Web.Kamyu
   dependencies:
     - base >= 4.16 && < 5

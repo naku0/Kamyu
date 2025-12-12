@@ -7,7 +7,7 @@ module Web.Kamyu.Combinators
     path,
     capture,
     root,
-    middleware,
+    createMiddleware,
   )
 where
 
@@ -45,5 +45,5 @@ capture = undefined
 root :: Kamyu a -> Kamyu a
 root = undefined
 
-middleware :: Middleware -> Kamyu ()
-middleware = addMiddleware
+createMiddleware :: Middleware -> Kamyu ()
+createMiddleware = addMiddleware

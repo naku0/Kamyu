@@ -2,26 +2,44 @@
 
 module Web.Kamyu.Params
   ( -- * Query parameter functions
-    getString, getInt, getBool, getDouble
-  , getStringOpt, getIntOpt, getBoolOpt, getDoubleOpt
-  , getStringDef, getIntDef, getBoolDef, getDoubleDef
-  , pathParam, pathParamDef
-  , orElse, orMaybe
-  , ParamError(..)
-  
-  -- * New simple DSL functions
-  , fromPath, fromPathInt, fromPathBool, fromPathDouble
-  , fromQuery, fromQueryInt, fromQueryBool, fromQueryDouble
-  , orDefault
-  ) where
+    getString,
+    getInt,
+    getBool,
+    getDouble,
+    getStringOpt,
+    getIntOpt,
+    getBoolOpt,
+    getDoubleOpt,
+    getStringDef,
+    getIntDef,
+    getBoolDef,
+    getDoubleDef,
+    pathParam,
+    pathParamDef,
+    orElse,
+    orMaybe,
+    ParamError (..),
 
+    -- * New simple DSL functions
+    fromPath,
+    fromPathInt,
+    fromPathBool,
+    fromPathDouble,
+    fromQuery,
+    fromQueryInt,
+    fromQueryBool,
+    fromQueryDouble,
+    orDefault,
+  )
+where
+
+import Data.Char (isUpper, toLower)
 import Data.Maybe (fromMaybe)
 import Data.Text (Text)
 import qualified Data.Text as T
 import Data.Text.Encoding (decodeUtf8, encodeUtf8)
 import qualified Data.Text.Read as TR
 import Network.Wai (Request, queryString)
-import Data.Char(toLower, isUpper)
 
 -- For user convenience, we accept String but work with Text internally
 type ParamName = String
@@ -154,19 +172,19 @@ fromPathDouble name params = do
 
 -- | Get query parameter as Maybe String (new DSL)
 fromQuery :: String -> Request -> Maybe String
-fromQuery = getString  -- Now just an alias
+fromQuery = getString -- Now just an alias
 
 -- | Get query parameter as Maybe Int (new DSL)
 fromQueryInt :: String -> Request -> Maybe Int
-fromQueryInt = getInt  -- Now just an alias
+fromQueryInt = getInt -- Now just an alias
 
 -- | Get query parameter as Maybe Bool (new DSL)
 fromQueryBool :: String -> Request -> Maybe Bool
-fromQueryBool = getBool  -- Now just an alias
+fromQueryBool = getBool -- Now just an alias
 
 -- | Get query parameter as Maybe Double (new DSL)
 fromQueryDouble :: String -> Request -> Maybe Double
-fromQueryDouble = getDouble  -- Now just an alias
+fromQueryDouble = getDouble -- Now just an alias
 
 ----------------------------------------------------------------
 -- HELPER FUNCTIONS

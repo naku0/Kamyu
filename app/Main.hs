@@ -5,24 +5,10 @@
 
 module Main (main) where
 
-import qualified Data.ByteString.Char8 as BS
-import qualified Data.CaseInsensitive as CI
 import GHC.Generics (Generic)
 import Network.HTTP.Types (Status, status201)
-import Network.Wai
-  ( Request,
-    mapResponseHeaders,
-    pathInfo,
-    requestHeaders,
-    requestMethod,
-  )
-import Web.Kamyu (pathParam)
-import Web.Kamyu.Combinators (get, middleware, post)
-import Web.Kamyu.Core (KamyuHandler, Middleware)
-import Web.Kamyu.Json (JsonCodec, jsonHandler)
-import Web.Kamyu.Params (fromPath, fromQuery, fromQueryInt, getInt, getString, orDefault, orElse, pathParamDef)
-import Web.Kamyu.Server (runKamyu)
-import Web.Kamyu.Status (ok, unauthorized)
+import Network.Wai (Request)
+import Web.Kamyu
 
 homeHandler :: KamyuHandler
 homeHandler _ _ = return $ ok "Home is here"
@@ -40,25 +26,6 @@ data Person = Person
   }
   deriving (Show, Generic, JsonCodec)
 
-requestLogger :: Middleware
-requestLogger app req respond = do
-  putStrLn $ "🧱 [MW] " ++ BS.unpack (requestMethod req) ++ " " ++ show (pathInfo req)
-  app req respond
-
-poweredBy :: Middleware
-poweredBy app req respond =
-  app req $ \response -> respond (mapResponseHeaders (("X-Powered-By", "Kamyu") :) response)
-
-bearerAuth :: (BS.ByteString -> Bool) -> Middleware
-bearerAuth isAllowed app req respond =
-  case lookup (CI.mk "Authorization") (requestHeaders req) of
-    Just header
-      | "Bearer " `BS.isPrefixOf` header,
-        let token = BS.drop 7 header,
-        isAllowed token ->
-          app req respond
-    _ -> respond $ unauthorized "Missing or invalid token"
-
 createPerson :: CreatePerson -> Request -> [(String, String)] -> IO (Status, Person)
 createPerson CreatePerson {name = personName, age = personAgeVal} req pathParams = do
   let city = pathParamDef "unknown" "city" pathParams
@@ -72,9 +39,20 @@ main :: IO ()
 main = do
   putStrLn "=== KAMYU START ==="
   runKamyu 8080 $ do
-    middleware requestLogger
-    middleware poweredBy
-    middleware (bearerAuth (== "super-secret"))
+    createMiddleware $
+      buildMiddleware $
+        use (auth (== "super-secret"))
+          |> exceptRoute "/"
+          |> exceptRoute "/health"
+          |> exceptRoute "/home"
+
+    createMiddleware $
+      buildMiddleware $
+        use cors
+          |> forRoute "/api/*"
+          |> forRoute "/cities/*"
+
+    createMiddleware $ buildMiddleware $ use (poweredBy "Kamyu")
 
     get "/" $ \_ _ -> do
       putStrLn "⭐ Handler for GET / called!"
