@@ -3,52 +3,26 @@
 import Test.Hspec
 import Test.Hspec.Wai
 import Test.Hspec.Wai.JSON
-import Network.Wai (Application, Request(..), Response, requestMethod, pathInfo)
+import Network.Wai (Application, Request(..), Response, requestMethod, pathInfo, Middleware, mapResponseHeaders)
 import Network.HTTP.Types (status200)
-import Web.Kamyu.Core
+import Web.Kamyu.Core hiding (Middleware)
+import Web.Kamyu.Server (kamyuApp)
 import qualified Web.Kamyu.Combinators as Kamyu
-import Web.Kamyu.Status (ok, notFound)
+import Web.Kamyu.Status (ok)
 import Web.Kamyu.Params (getString, getInt, orElse)
-import Control.Monad.Trans.State (runStateT)
-import Control.Monad.Trans.Except (runExceptT)
-import Data.List (find)
-import Data.Maybe (isJust)
-import qualified Data.ByteString.Char8 as BS
 
--- Re-implementation of runKamyuApp from Server.hs since it's not exported in a usable way for testing
-runKamyuApp :: KamyuState -> Kamyu a -> IO (Either KamyuError (a, KamyuState))
-runKamyuApp state (Kamyu action) = runExceptT (runStateT action state)
-
--- Re-implementation of createApp logic from Server.hs
-createApp :: KamyuState -> Application
-createApp state request respond = do
-    let matching = findMatchingRoute (routes state) request
-    case matching of
-        Just (handler, params, _) -> do
-            response <- handler request params
-            respond response
-        Nothing -> do
-            respond $ notFound "Not found 404"
-
-findMatchingRoute :: [Route] -> Request -> Maybe (KamyuHandler, [(String, String)], [PathSegment])
-findMatchingRoute routes' request = 
-    find (matchesRoute request) routes' >>= extractRouteInfo
-  where
-    matchesRoute request route = 
-        show (routeMethod route) == BS.unpack (requestMethod request) &&
-        isJust (matchRoute (pathInfo request) (routePattern route))
-    
-    extractRouteInfo route = 
-        case matchRoute (pathInfo request) (routePattern route) of
-            Just params -> Just (routeHandler route, params, routePattern route)
-            Nothing -> Nothing
-
--- Re-implementation of handlers from Main.hs
 homeHandler :: KamyuHandler
 homeHandler _ _ = return $ ok $ "Home is here"
 
+testMiddleware :: Middleware
+testMiddleware app req respond = app req $ \res -> do
+    let res' = mapResponseHeaders (("X-Test-Header", "KamyuTest") :) res
+    respond res'
+
 testRoutes :: KamyuBuilder
 testRoutes = do
+    addMiddleware testMiddleware
+
     Kamyu.get "/" $ \_ _ -> do
         return $ ok $ "SUCCESS! Kamyu is working!"
 
@@ -59,14 +33,8 @@ testRoutes = do
             page = getInt "page" req `orElse` 1
         return $ ok $ "Search: " ++ query ++ ", page: " ++ show page
 
--- Build the application for testing
 buildTestApp :: IO Application
-buildTestApp = do
-    let initialState = KamyuState [] [] []
-    result <- runKamyuApp initialState testRoutes
-    case result of
-        Left err -> error $ "Kamyu error: " ++ show err
-        Right (_, finalState) -> return $ createApp finalState
+buildTestApp = kamyuApp testRoutes
 
 main :: IO ()
 main = hspec $ with buildTestApp $ do
@@ -91,3 +59,7 @@ main = hspec $ with buildTestApp $ do
 
             it "responds with both params" $ do
                 get "/search?q=test&page=5" `shouldRespondWith` "Search: test, page: 5" { matchStatus = 200 }
+
+        describe "Middleware" $ do
+            it "adds X-Test-Header to response" $ do
+                get "/" `shouldRespondWith` 200 { matchHeaders = ["X-Test-Header" <:> "KamyuTest"] }
