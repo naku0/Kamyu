@@ -53,5 +53,5 @@ def test_create_person():
 
 def test_unauthorized():
     resp = requests.get(f"{BASE_URL}/", headers={})
-    assert resp.status_code == 401
+    assert resp.status_code == 403
     assert "Missing or invalid token" in resp.text
