@@ -56,6 +56,7 @@ library:
     - http-types
     - text
     - bytestring
+    - case-insensitive
 
 executables:
   kamyu-exe:
@@ -73,6 +74,7 @@ executables:
     - wai
     - http-types
     - bytestring
+    - case-insensitive
 
 tests:
   kamyu-test:

@@ -8,14 +8,14 @@ import Web.Kamyu.Core
     ( KamyuBuilder,
       Kamyu(Kamyu),
       KamyuError,
-      KamyuState(KamyuState, routes),
+      KamyuState(KamyuState, routes, middlewareChain),
       Route(routePattern, routeHandler, routeMethod),
       KamyuHandler,
+      Middleware,
       matchRoute,
-      PathSegment(..),
-      Method(..) )
+      PathSegment(..) )
 import Network.Wai
-    ( Request(pathInfo, requestMethod), Application, Response )
+    ( Request(pathInfo, requestMethod), Application )
 import Network.Wai.Handler.Warp (run)
 import Data.List (find)
 import Control.Monad.Trans.State (runStateT)
@@ -51,7 +51,10 @@ runKamyuApp :: KamyuState -> Kamyu a -> IO (Either KamyuError (a, KamyuState))
 runKamyuApp state (Kamyu action) = runExceptT (runStateT action state)
 
 createApp :: KamyuState -> Application
-createApp state request respond = do
+createApp state = applyMiddlewares (middlewareChain state) (routerApp state)
+
+routerApp :: KamyuState -> Application
+routerApp state request respond = do
     putStrLn $ "📨 Request: " ++ BS.unpack (requestMethod request) ++ " " ++ show (pathInfo request)
     
     let matching = findMatchingRoute (routes state) request
@@ -65,13 +68,16 @@ createApp state request respond = do
             putStrLn "❌ No match"
             respond $ notFound "Not found 404"
 
+applyMiddlewares :: [Middleware] -> Application -> Application
+applyMiddlewares mws app = foldr (\mw acc -> mw acc) app mws
+
 findMatchingRoute :: [Route] -> Request -> Maybe (KamyuHandler, [(String, String)], [PathSegment])
 findMatchingRoute routes' request = 
     find (matchesRoute request) routes' >>= extractRouteInfo
   where
-    matchesRoute request route = 
-        show (routeMethod route) == BS.unpack (requestMethod request) &&
-        isJust (matchRoute (pathInfo request) (routePattern route))
+    matchesRoute req route = 
+        show (routeMethod route) == BS.unpack (requestMethod req) &&
+        isJust (matchRoute (pathInfo req) (routePattern route))
     
     extractRouteInfo route = 
         case matchRoute (pathInfo request) (routePattern route) of

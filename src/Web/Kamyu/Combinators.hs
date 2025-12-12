@@ -10,7 +10,8 @@ import Web.Kamyu.Core
       Middleware,
       KamyuHandler,
       Method(PATCH, GET, POST, PUT, DELETE),
-      addRoute )
+      addRoute,
+      addMiddleware )
 
 get :: String -> KamyuHandler -> Kamyu()
 get = addRoute GET
@@ -38,4 +39,4 @@ root :: Kamyu a -> Kamyu a
 root = undefined
 
 middleware :: Middleware -> Kamyu ()
-middleware = undefined
+middleware = addMiddleware

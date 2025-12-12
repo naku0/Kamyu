@@ -92,6 +92,48 @@ post "/cities/:city/people" $ jsonHandler createPersonHandler
 параметров, заголовков и динамических сегментов пути. Kamyu автоматически
 сериализует результат и выставляет `Content-Type: application/json`.
 
+5. Middleware (как Spring filters)
+
+```haskell
+{-# LANGUAGE DeriveGeneric #-}
+{-# LANGUAGE DeriveAnyClass #-}
+
+import Web.Kamyu.Combinators (get, middleware)
+import Web.Kamyu.Core (Middleware)
+import Web.Kamyu.Status (ok, unauthorized)
+import Network.Wai (requestMethod, pathInfo, mapResponseHeaders, requestHeaders)
+import qualified Data.ByteString.Char8 as BS
+import qualified Data.CaseInsensitive as CI
+
+requestLogger :: Middleware
+requestLogger app req respond = do
+    putStrLn $ "[MW] " ++ BS.unpack (requestMethod req) ++ " " ++ show (pathInfo req)
+    app req respond
+
+poweredBy :: Middleware
+poweredBy app req respond =
+    app req $ \response -> respond (mapResponseHeaders (("X-Powered-By", "Kamyu") :) response)
+
+bearerAuth :: (BS.ByteString -> Bool) -> Middleware
+bearerAuth allow app req respond =
+    case lookup (CI.mk "Authorization") (requestHeaders req) of
+        Just header | "Bearer " `BS.isPrefixOf` header
+                    , let token = BS.drop 7 header
+                    , allow token -> app req respond
+        _ -> respond $ unauthorized "Missing or invalid token"
+
+main = runKamyu 8080 do
+    middleware requestLogger
+    middleware poweredBy
+    middleware (bearerAuth (== "super-secret"))
+    get "/" $ \_ _ -> return $ ok "Hello"
+```
+
+`middleware` строит цепочку, аналогичную Spring фильтрам: логгер выполняется первым,
+затем фильтры, умеющие модифицировать ответ, и, наконец, защиты вроде `bearerAuth`.
+Если токен не проходит проверку, middleware завершает запрос сам — обработчики
+маршрутов даже не вызываются.
+
 ## 🛣️ Roadmap
 
 ✅ Базовая маршрутизация (GET, POST, PUT, DELETE)

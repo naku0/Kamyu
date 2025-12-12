@@ -45,6 +45,7 @@ library
       aeson
     , base >=4.16 && <5
     , bytestring
+    , case-insensitive
     , http-types
     , mtl
     , text
@@ -66,6 +67,7 @@ executable kamyu-exe
       aeson
     , base
     , bytestring
+    , case-insensitive
     , http-types
     , kamyu
     , wai

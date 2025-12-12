@@ -6,14 +6,20 @@
 module Main(main) where
 
 import Web.Kamyu.Server (runKamyu)
-import Web.Kamyu.Combinators ( get, post )
-import Web.Kamyu.Status (ok)
-import Web.Kamyu.Core (KamyuHandler)
+import Web.Kamyu.Combinators ( get, post, middleware )
+import Web.Kamyu.Status (ok, unauthorized)
+import Web.Kamyu.Core (KamyuHandler, Middleware)
 import Web.Kamyu.Json (jsonHandler, JsonCodec)
 import GHC.Generics (Generic)
 import Network.HTTP.Types (Status, status201)
-import Network.Wai (Request)
+import Network.Wai ( Request
+                   , requestMethod
+                   , pathInfo
+                   , mapResponseHeaders
+                   , requestHeaders)
 import Web.Kamyu.Params (orElse, getInt, getString, pathParamDef)
+import qualified Data.ByteString.Char8 as BS
+import qualified Data.CaseInsensitive as CI
 
 homeHandler :: KamyuHandler
 homeHandler _ _ = return $ ok $ "Home is here"
@@ -29,6 +35,23 @@ data Person = Person
     , personAge :: Int
     } deriving (Show, Generic, JsonCodec)
 
+requestLogger :: Middleware
+requestLogger app req respond = do
+    putStrLn $ "🧱 [MW] " ++ BS.unpack (requestMethod req) ++ " " ++ show (pathInfo req)
+    app req respond
+
+poweredBy :: Middleware
+poweredBy app req respond =
+    app req $ \response -> respond (mapResponseHeaders (("X-Powered-By", "Kamyu") :) response)
+
+bearerAuth :: (BS.ByteString -> Bool) -> Middleware
+bearerAuth isAllowed app req respond =
+    case lookup (CI.mk "Authorization") (requestHeaders req) of
+        Just header | "Bearer " `BS.isPrefixOf` header
+                    , let token = BS.drop 7 header
+                    , isAllowed token -> app req respond
+        _ -> respond $ unauthorized "Missing or invalid token"
+
 createPerson :: CreatePerson -> Request -> [(String, String)] -> IO (Status, Person)
 createPerson CreatePerson{name = personName, age = personAgeVal} req pathParams = do
     let city = pathParamDef "unknown" "city" pathParams
@@ -42,6 +65,10 @@ main :: IO ()
 main = do
     putStrLn "=== KAMYU START ==="
     runKamyu 8080 $ do
+        middleware requestLogger
+        middleware poweredBy
+        middleware (bearerAuth (== "super-secret"))
+
         get "/" $ \_ _ -> do
             putStrLn "⭐ Handler for GET / called!"
             return $ ok $ "SUCCESS! Kamyu is working!"
@@ -52,7 +79,7 @@ main = do
             let userId = pathParamDef "0" "id" params
             return $ ok $ "User ID: " ++ userId
 
-        get "/search" $ \req params -> do
+        get "/search" $ \req _ -> do
             let query = getString "q" req `orElse` ""
                 page = getInt "page" req `orElse` 1
             return $ ok $ "Search: " ++ query ++ ", page: " ++ show page

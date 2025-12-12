@@ -11,19 +11,18 @@ module Web.Kamyu.Core
     , KamyuApp
     , KamyuBuilder
     , addRoute
+    , addMiddleware
     , PathSegment(..)
     , matchRoute
     ) where
 
 import Control.Monad.Trans.State
 import Control.Monad.Trans.Except
-import Network.Wai (Request, Response, Application, pathInfo, requestMethod)
+import Network.Wai (Request, Response, Application)
 import Control.Monad.IO.Class (MonadIO)
 import Data.Text (Text)
 import qualified Data.Text as T
-import qualified Data.ByteString.Char8 as BS
 import Data.List (isPrefixOf, intercalate)
-import Web.Kamyu.Utils (toText)
 
 data Method = GET | POST | PUT | DELETE | PATCH deriving (Show, Eq)
 type KamyuHandler = Request -> [(String, String)] -> IO Response
@@ -98,6 +97,12 @@ addRoute method pathPattern handler = do
         pattern = parsePathPattern fullPath
         newRoute = Route method pattern handler
     putKamyuState $ currentState { routes = newRoute : routes currentState }
+
+addMiddleware :: Middleware -> Kamyu ()
+addMiddleware mw = do
+    currentState <- getKamyuState
+    let existing = middlewareChain currentState
+    putKamyuState $ currentState { middlewareChain = existing <> [mw] }
 
 buildFullPath :: [String] -> String -> String
 buildFullPath context pathStr = 
