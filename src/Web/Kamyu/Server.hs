@@ -1,7 +1,8 @@
 {-# LANGUAGE OverloadedStrings #-}
 
 module Web.Kamyu.Server(
-    runKamyu
+    runKamyu,
+    kamyuApp
     ) where
 
 import Web.Kamyu.Core
@@ -13,7 +14,8 @@ import Web.Kamyu.Core
       KamyuHandler,
       Middleware,
       matchRoute,
-      PathSegment(..) )
+      PathSegment(..),
+      Method(..) )
 import Network.Wai
     ( Request(pathInfo, requestMethod), Application )
 import Network.Wai.Handler.Warp (run)
@@ -24,9 +26,18 @@ import qualified Data.ByteString.Char8 as BS
 import Web.Kamyu.Status (notFound)
 import Data.Maybe (isJust)
 
+kamyuApp :: KamyuBuilder -> IO Application
+kamyuApp builder = do
+    let initialState = KamyuState [] [] []
+    result <- runKamyuApp initialState builder
+    case result of
+        Left err -> error $ "Kamyu error: " ++ show err
+        Right (_, finalState) -> return $ createApp finalState
+
 runKamyu :: Int -> KamyuBuilder -> IO ()
 runKamyu port builder = do
     putStrLn "🚀 Starting Kamyu server..."
+    app <- kamyuApp builder
     let initialState = KamyuState [] [] []
     result <- runKamyuApp initialState builder
     case result of
@@ -34,7 +45,6 @@ runKamyu port builder = do
         Right (_, finalState) -> do
             putStrLn "📊 Registered routes:"
             mapM_ printRoute (routes finalState)
-            let app = createApp finalState
             putStrLn $ "🌐 Server running on port " ++ show port
             run port app
   where
