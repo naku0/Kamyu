@@ -1,20 +1,19 @@
+{-# LANGUAGE OverloadedStrings #-}
+
 module Web.Kamyu.Params
-  ( getString,
-    getInt,
-    getBool,
-    getDouble,
-    getStringOpt,
-    getIntOpt,
-    getBoolOpt,
-    getDoubleOpt,
-    pathParam,
-    pathParamDef,
-    orElse,
-    orMaybe,
-    defaultTo,
-    ParamError (..),
-  )
-where
+  ( -- * Query parameter functions
+    getString, getInt, getBool, getDouble
+  , getStringOpt, getIntOpt, getBoolOpt, getDoubleOpt
+  , getStringDef, getIntDef, getBoolDef, getDoubleDef
+  , pathParam, pathParamDef
+  , orElse, orMaybe
+  , ParamError(..)
+  
+  -- * New simple DSL functions
+  , fromPath, fromPathInt, fromPathBool, fromPathDouble
+  , fromQuery, fromQueryInt, fromQueryBool, fromQueryDouble
+  , orDefault
+  ) where
 
 import Data.Maybe (fromMaybe)
 import Data.Text (Text)
@@ -22,6 +21,7 @@ import qualified Data.Text as T
 import Data.Text.Encoding (decodeUtf8, encodeUtf8)
 import qualified Data.Text.Read as TR
 import Network.Wai (Request, queryString)
+import Data.Char(toLower, isUpper)
 
 -- For user convenience, we accept String but work with Text internally
 type ParamName = String
@@ -41,7 +41,7 @@ rawParam key req =
     _ -> Nothing
 
 ----------------------------------------------------------------
--- PATH PARAMETER GETTERS (НОВЫЕ!)
+-- PATH PARAMETER FUNCTIONS
 ----------------------------------------------------------------
 
 -- | Get path parameter from list
@@ -53,67 +53,26 @@ pathParamDef :: String -> String -> [(String, String)] -> String
 pathParamDef def name params = fromMaybe def (lookup name params)
 
 ----------------------------------------------------------------
--- QUERY PARAMETER GETTERS (старые, без изменений)
+-- QUERY PARAMETER FUNCTIONS (updated to use Maybe)
 ----------------------------------------------------------------
 
--- | Get required string parameter
-getString :: ParamName -> Request -> Either ParamError String
-getString name req =
-  case rawParam name req of
-    Just val -> Right (T.unpack val)
-    Nothing -> Left (MissingParam name)
-
--- | Get required integer parameter
-getInt :: ParamName -> Request -> Either ParamError Int
-getInt name req = do
-  txt <- maybe (Left $ MissingParam name) Right (rawParam name req)
-  case TR.decimal txt of
-    Right (val, rest) | T.null rest -> Right val
-    _ -> Left (InvalidInt name)
-
--- | Get required boolean parameter
-getBool :: ParamName -> Request -> Either ParamError Bool
-getBool name req = do
-  textVal <- maybe (Left $ MissingParam name) Right (rawParam name req)
-  let lower = T.unpack (T.toLower textVal)
-  case lower of
-    "true" -> Right True
-    "false" -> Right False
-    "1" -> Right True
-    "0" -> Right False
-    "yes" -> Right True
-    "no" -> Right False
-    _ -> Left (InvalidBool name)
-
--- | Get required double parameter
-getDouble :: ParamName -> Request -> Either ParamError Double
-getDouble name req = do
-  textVal <- maybe (Left $ MissingParam name) Right (rawParam name req)
-  case TR.double textVal of
-    Right (val, rest) | T.null rest -> Right val
-    _ -> Left (InvalidDouble name)
-
-----------------------------------------------------------------
--- OPTIONAL GETTERS
-----------------------------------------------------------------
-
--- | Get optional string parameter
-getStringOpt :: ParamName -> Request -> Maybe String
-getStringOpt name req = do
+-- | Get required string parameter (returns Nothing if missing)
+getString :: ParamName -> Request -> Maybe String
+getString name req = do
   textVal <- rawParam name req
   Just (T.unpack textVal)
 
--- | Get optional integer parameter
-getIntOpt :: ParamName -> Request -> Maybe Int
-getIntOpt name req = do
+-- | Get required integer parameter (returns Nothing if missing or invalid)
+getInt :: ParamName -> Request -> Maybe Int
+getInt name req = do
   textVal <- rawParam name req
   case TR.decimal textVal of
     Right (val, rest) | T.null rest -> Just val
     _ -> Nothing
 
--- | Get optional boolean parameter
-getBoolOpt :: ParamName -> Request -> Maybe Bool
-getBoolOpt name req = do
+-- | Get required boolean parameter (returns Nothing if missing or invalid)
+getBool :: ParamName -> Request -> Maybe Bool
+getBool name req = do
   textVal <- rawParam name req
   let lower = T.unpack (T.toLower textVal)
   case lower of
@@ -125,45 +84,120 @@ getBoolOpt name req = do
     "no" -> Just False
     _ -> Nothing
 
--- | Get optional double parameter
-getDoubleOpt :: ParamName -> Request -> Maybe Double
-getDoubleOpt name req = do
+-- | Get required double parameter (returns Nothing if missing or invalid)
+getDouble :: ParamName -> Request -> Maybe Double
+getDouble name req = do
   textVal <- rawParam name req
   case TR.double textVal of
     Right (val, rest) | T.null rest -> Just val
     _ -> Nothing
 
 ----------------------------------------------------------------
--- ERROR HANDLING / DEFAULT VALUES
+-- OPTIONAL GETTERS (these are now the same as the regular getters)
 ----------------------------------------------------------------
 
--- | Provide default value for Either
-orElse :: Either ParamError a -> a -> a
-orElse (Right val) _ = val
-orElse (Left _) def = def
+-- | Get optional string parameter (same as getString)
+getStringOpt :: ParamName -> Request -> Maybe String
+getStringOpt = getString
+
+-- | Get optional integer parameter (same as getInt)
+getIntOpt :: ParamName -> Request -> Maybe Int
+getIntOpt = getInt
+
+-- | Get optional boolean parameter (same as getBool)
+getBoolOpt :: ParamName -> Request -> Maybe Bool
+getBoolOpt = getBool
+
+-- | Get optional double parameter (same as getDouble)
+getDoubleOpt :: ParamName -> Request -> Maybe Double
+getDoubleOpt = getDouble
+
+----------------------------------------------------------------
+-- NEW SIMPLE DSL FUNCTIONS
+----------------------------------------------------------------
+
+-- | Get path parameter as Maybe String (new DSL)
+fromPath :: String -> [(String, String)] -> Maybe String
+fromPath = lookup
+
+-- | Get path parameter as Maybe Int (new DSL)
+fromPathInt :: String -> [(String, String)] -> Maybe Int
+fromPathInt name params = do
+  str <- lookup name params
+  case TR.decimal (T.pack str) of
+    Right (val, rest) | T.null rest -> Just val
+    _ -> Nothing
+
+-- | Get path parameter as Maybe Bool (new DSL)
+fromPathBool :: String -> [(String, String)] -> Maybe Bool
+fromPathBool name params = do
+  str <- lookup name params
+  let lower = map toLower str
+  case lower of
+    "true" -> Just True
+    "false" -> Just False
+    "1" -> Just True
+    "0" -> Just False
+    "yes" -> Just True
+    "no" -> Just False
+    _ -> Nothing
+  where
+    toLower c = if isUpper c then toEnum (fromEnum c + 32) else c
+
+-- | Get path parameter as Maybe Double (new DSL)
+fromPathDouble :: String -> [(String, String)] -> Maybe Double
+fromPathDouble name params = do
+  str <- lookup name params
+  case TR.double (T.pack str) of
+    Right (val, rest) | T.null rest -> Just val
+    _ -> Nothing
+
+-- | Get query parameter as Maybe String (new DSL)
+fromQuery :: String -> Request -> Maybe String
+fromQuery = getString  -- Now just an alias
+
+-- | Get query parameter as Maybe Int (new DSL)
+fromQueryInt :: String -> Request -> Maybe Int
+fromQueryInt = getInt  -- Now just an alias
+
+-- | Get query parameter as Maybe Bool (new DSL)
+fromQueryBool :: String -> Request -> Maybe Bool
+fromQueryBool = getBool  -- Now just an alias
+
+-- | Get query parameter as Maybe Double (new DSL)
+fromQueryDouble :: String -> Request -> Maybe Double
+fromQueryDouble = getDouble  -- Now just an alias
+
+----------------------------------------------------------------
+-- HELPER FUNCTIONS
+----------------------------------------------------------------
 
 -- | Provide default value for Maybe
 orMaybe :: Maybe a -> a -> a
 orMaybe (Just val) _ = val
 orMaybe Nothing def = def
 
--- | Alias for orElse
-defaultTo :: Either ParamError a -> a -> a
-defaultTo = orElse
+-- | Alias for orMaybe
+orDefault :: Maybe a -> a -> a
+orDefault = orMaybe
+
+-- | Another alias for orMaybe
+orElse :: Maybe a -> a -> a
+orElse = orMaybe
 
 ----------------------------------------------------------------
--- CONVENIENCE FUNCTIONS
+-- CONVENIENCE FUNCTIONS WITH DEFAULTS
 ----------------------------------------------------------------
 
--- | Get parameter with default (для тех кто предпочитает один вызов)
+-- | Get parameter with default
 getStringDef :: String -> ParamName -> Request -> String
-getStringDef def name req = fromMaybe def (getStringOpt name req)
+getStringDef def name req = fromMaybe def (getString name req)
 
 getIntDef :: Int -> ParamName -> Request -> Int
-getIntDef def name req = fromMaybe def (getIntOpt name req)
+getIntDef def name req = fromMaybe def (getInt name req)
 
 getBoolDef :: Bool -> ParamName -> Request -> Bool
-getBoolDef def name req = fromMaybe def (getBoolOpt name req)
+getBoolDef def name req = fromMaybe def (getBool name req)
 
 getDoubleDef :: Double -> ParamName -> Request -> Double
-getDoubleDef def name req = fromMaybe def (getDoubleOpt name req)
+getDoubleDef def name req = fromMaybe def (getDouble name req)

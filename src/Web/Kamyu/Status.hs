@@ -1,5 +1,6 @@
 module Web.Kamyu.Status
   ( ok,
+    created,
     badRequest,
     notFound,
     unauthorized,
@@ -9,11 +10,14 @@ where
 import qualified Data.ByteString.Lazy as LBS
 import qualified Data.Text as T
 import qualified Data.Text.Encoding as T
-import Network.HTTP.Types (status200, status400, status403, status404)
+import Network.HTTP.Types (status200, status201, status400, status403, status404)
 import Network.Wai (Response, responseLBS)
 
 ok :: String -> Response
 ok = responseLBS status200 [] . toLBS
+
+created :: String -> Response
+created = responseLBS status201 [] . toLBS
 
 notFound :: String -> Response
 notFound = responseLBS status404 [] . toLBS
