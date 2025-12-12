@@ -9,7 +9,7 @@ HEADERS = {"Authorization": "Bearer super-secret"}
 def wait_for_server():
     for _ in range(30):
         try:
-            requests.get(BASE_URL, headers=HEADERS)
+            requests.get(f"{BASE_URL}/")
             return True
         except requests.exceptions.ConnectionError:
             time.sleep(1)
@@ -52,6 +52,12 @@ def test_create_person():
     assert data["identifier"] == 1
 
 def test_unauthorized():
-    resp = requests.get(f"{BASE_URL}/", headers={})
+    resp = requests.get(f"{BASE_URL}/user/42", headers={})
     assert resp.status_code == 403
     assert "Missing or invalid token" in resp.text
+
+def test_public_endpoints_without_auth():
+    public_endpoints = ["/", "/health", "/home"]
+    for endpoint in public_endpoints:
+        resp = requests.get(f"{BASE_URL}{endpoint}", headers={})
+        assert resp.status_code == 200
