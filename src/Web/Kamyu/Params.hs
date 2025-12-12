@@ -68,14 +68,14 @@ getInt :: ParamName -> Request -> Either ParamError Int
 getInt name req = do
   txt <- maybe (Left $ MissingParam name) Right (rawParam name req)
   case TR.decimal txt of
-    Right (val, "") -> Right val
+    Right (val, rest) | T.null rest -> Right val
     _ -> Left (InvalidInt name)
 
 -- | Get required boolean parameter
 getBool :: ParamName -> Request -> Either ParamError Bool
 getBool name req = do
   textVal <- maybe (Left $ MissingParam name) Right (rawParam name req)
-  let lower = T.toLower textVal
+  let lower = T.unpack (T.toLower textVal)
   case lower of
     "true" -> Right True
     "false" -> Right False
@@ -90,7 +90,7 @@ getDouble :: ParamName -> Request -> Either ParamError Double
 getDouble name req = do
   textVal <- maybe (Left $ MissingParam name) Right (rawParam name req)
   case TR.double textVal of
-    Right (val, "") -> Right val
+    Right (val, rest) | T.null rest -> Right val
     _ -> Left (InvalidDouble name)
 
 ----------------------------------------------------------------
@@ -108,14 +108,14 @@ getIntOpt :: ParamName -> Request -> Maybe Int
 getIntOpt name req = do
   textVal <- rawParam name req
   case TR.decimal textVal of
-    Right (val, "") -> Just val
+    Right (val, rest) | T.null rest -> Just val
     _ -> Nothing
 
 -- | Get optional boolean parameter
 getBoolOpt :: ParamName -> Request -> Maybe Bool
 getBoolOpt name req = do
   textVal <- rawParam name req
-  let lower = T.toLower textVal
+  let lower = T.unpack (T.toLower textVal)
   case lower of
     "true" -> Just True
     "false" -> Just False
@@ -130,7 +130,7 @@ getDoubleOpt :: ParamName -> Request -> Maybe Double
 getDoubleOpt name req = do
   textVal <- rawParam name req
   case TR.double textVal of
-    Right (val, "") -> Just val
+    Right (val, rest) | T.null rest -> Just val
     _ -> Nothing
 
 ----------------------------------------------------------------
