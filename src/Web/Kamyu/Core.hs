@@ -94,8 +94,8 @@ addRoute :: Method -> String -> KamyuHandler -> Kamyu ()
 addRoute method pathPattern handler = do
     currentState <- getKamyuState
     let fullPath = buildFullPath (pathContext currentState) pathPattern
-        pattern = parsePathPattern fullPath
-        newRoute = Route method pattern handler
+        pat = parsePathPattern fullPath
+        newRoute = Route method pat handler
     putKamyuState $ currentState { routes = newRoute : routes currentState }
 
 addMiddleware :: Middleware -> Kamyu ()

@@ -86,3 +86,14 @@ tests:
     - -with-rtsopts=-N
     dependencies:
     - kamyu
+    - hspec
+    - hspec-wai
+    - hspec-wai-json
+    - wai-extra
+    - http-types
+    - aeson
+    - mtl
+    - transformers
+    - wai
+    - text
+    - bytestring
