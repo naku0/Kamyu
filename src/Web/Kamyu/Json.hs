@@ -68,8 +68,8 @@ class JsonCodec a where
     default parseJson :: (Generic a, GFromJSON Zero (Rep a)) => Value -> Parser a
     parseJson = genericParseJSON defaultOptions
 
-instance JsonCodec a => ToJSON a where
+instance {-# OVERLAPPABLE #-} JsonCodec a => ToJSON a where
     toJSON = toJson
 
-instance  JsonCodec a => FromJSON a where
+instance {-# OVERLAPPABLE #-} JsonCodec a => FromJSON a where
     parseJSON = parseJson
