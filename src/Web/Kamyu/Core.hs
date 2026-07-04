@@ -10,21 +10,13 @@ module Web.Kamyu.Core
     Kamyu (..),
     KamyuApp,
     KamyuBuilder,
-    addRoute,
-    addMiddleware,
-    withPathContext,
-    withRootContext,
     PathSegment (..),
-    matchRoute,
   )
 where
 
 import Control.Monad.IO.Class (MonadIO)
 import Control.Monad.Trans.Except
 import Control.Monad.Trans.State
-import Data.List (intercalate, isPrefixOf)
-import Data.Text (Text)
-import qualified Data.Text as T
 import Network.Wai (Application, Request, Response)
 
 data Method = GET | POST | PUT | DELETE | PATCH deriving (Show, Eq)
@@ -60,89 +52,3 @@ newtype Kamyu a = Kamyu
 type KamyuApp = Application
 
 type KamyuBuilder = Kamyu ()
-
--- | Получить текущее состояние
-getKamyuState :: Kamyu KamyuState
-getKamyuState = Kamyu get
-
--- | Установить новое состояние
-putKamyuState :: KamyuState -> Kamyu ()
-putKamyuState = Kamyu . put
-
--- | Парсинг строки пути в паттерн
-parsePathPattern :: String -> [PathSegment]
-parsePathPattern = map parseSegment . splitPath
-  where
-    parseSegment :: String -> PathSegment
-    parseSegment seg
-      | ":" `isPrefixOf` seg = Dynamic (drop 1 seg)
-      | otherwise = Static seg
-
--- | Разделение пути (исправленная версия)
-splitPath :: String -> [String]
-splitPath "" = [] -- Пустой путь
-splitPath "/" = [] -- Корневой путь
-splitPath path = filter (not . null) (splitOn '/' path)
-  where
-    splitOn :: Char -> String -> [String]
-    splitOn delimiter = go
-      where
-        go "" = []
-        go s =
-          let (part, rest) = break (== delimiter) s
-              rest' = dropWhile (== delimiter) rest
-           in part : go rest'
-
-addRoute :: Method -> String -> KamyuHandler -> Kamyu ()
-addRoute method pathPattern handler = do
-  currentState <- getKamyuState
-  let fullPath = buildFullPath (pathContext currentState) pathPattern
-      pat = parsePathPattern fullPath
-      newRoute = Route method pat handler
-  putKamyuState $ currentState {routes = newRoute : routes currentState}
-
-addMiddleware :: Middleware -> Kamyu ()
-addMiddleware mw = do
-  currentState <- getKamyuState
-  let existing = middlewareChain currentState
-  putKamyuState $ currentState {middlewareChain = existing <> [mw]}
-
-withPathContext :: String -> Kamyu a -> Kamyu a
-withPathContext pathPart (Kamyu action) = Kamyu $ do
-  currentState <- get
-  let previousContext = pathContext currentState
-      nextContext = previousContext <> parseContextPath pathPart
-  put currentState {pathContext = nextContext}
-  result <- action
-  updatedState <- get
-  put updatedState {pathContext = previousContext}
-  pure result
-
-withRootContext :: Kamyu a -> Kamyu a
-withRootContext (Kamyu action) = Kamyu $ do
-  currentState <- get
-  let previousContext = pathContext currentState
-  put currentState {pathContext = []}
-  result <- action
-  updatedState <- get
-  put updatedState {pathContext = previousContext}
-  pure result
-
-buildFullPath :: [String] -> String -> String
-buildFullPath context pathStr =
-  "/" ++ intercalate "/" (context <> splitPath pathStr)
-
-parseContextPath :: String -> [String]
-parseContextPath = splitPath
-
--- | Проверить совпадение и извлечь параметры
-matchRoute :: [Text] -> [PathSegment] -> Maybe [(String, String)]
-matchRoute [] [] = Just []
-matchRoute [] _ = Nothing
-matchRoute _ [] = Nothing
-matchRoute (reqPart : reqParts) (Static static : patternParts)
-  | T.unpack reqPart == static = matchRoute reqParts patternParts
-  | otherwise = Nothing
-matchRoute (reqPart : reqParts) (Dynamic paramName : patternParts) = do
-  rest <- matchRoute reqParts patternParts
-  return ((paramName, T.unpack reqPart) : rest)

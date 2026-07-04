@@ -37,6 +37,7 @@ library:
   source-dirs: src
   exposed-modules:
     - Web.Kamyu.Core
+    - Web.Kamyu.Router
     - Web.Kamyu.Server
     - Web.Kamyu.Combinators
     - Web.Kamyu.Status

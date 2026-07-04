@@ -1,5 +1,6 @@
 module Web.Kamyu
   ( module Web.Kamyu.Core,
+    module Web.Kamyu.Router,
     module Web.Kamyu.Combinators,
     module Web.Kamyu.Server,
     module Web.Kamyu.Status,
@@ -17,6 +18,7 @@ import Web.Kamyu.DSL
 import Web.Kamyu.Json
 import Web.Kamyu.Middleware
 import Web.Kamyu.Params
+import Web.Kamyu.Router
 import Web.Kamyu.Server
 import Web.Kamyu.Status
 import Web.Kamyu.Utils

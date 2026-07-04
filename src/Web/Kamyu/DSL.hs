@@ -5,12 +5,14 @@ module Web.Kamyu.DSL
     handler,
     module Web.Kamyu.Status,
     module Web.Kamyu.Core,
+    module Web.Kamyu.Router,
   )
 where
 
 import Network.Wai (Request, Response)
 import Web.Kamyu.Core (KamyuHandler)
 import Web.Kamyu.Params
+import Web.Kamyu.Router
 import Web.Kamyu.Status (badRequest, created, notFound, ok, unauthorized)
 
 ----------------------------------------------------------------

@@ -16,7 +16,9 @@ import Web.Kamyu.Core
     KamyuHandler,
     Method (DELETE, GET, PATCH, POST, PUT),
     Middleware,
-    addMiddleware,
+  )
+import Web.Kamyu.Router
+  ( addMiddleware,
     addRoute,
     withPathContext,
     withRootContext,

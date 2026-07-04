@@ -25,8 +25,8 @@ import Web.Kamyu.Core
     Middleware,
     PathSegment (..),
     Route (routeHandler, routeMethod, routePattern),
-    matchRoute,
   )
+import Web.Kamyu.Router (matchRoute)
 import Web.Kamyu.Status (notFound)
 
 kamyuApp :: KamyuBuilder -> IO Application
