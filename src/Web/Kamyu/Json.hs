@@ -10,6 +10,9 @@ module Web.Kamyu.Json
     jsonBody,
     jsonResponse,
     jsonResponseWith,
+    jsonOk,
+    jsonCreate,
+    jsonWithStatus,
     jsonHandler,
     JsonCodec (..),
   )
@@ -27,7 +30,7 @@ import Data.Aeson
   )
 import Data.Aeson.Types (GFromJSON, GToJSON, Parser, Zero)
 import GHC.Generics (Generic, Rep)
-import Network.HTTP.Types (Status, hContentType, status200)
+import Network.HTTP.Types (Status, hContentType, status200, status201)
 import Network.Wai (Request, Response, responseLBS, strictRequestBody)
 import Web.Kamyu.Core (KamyuHandler)
 import Web.Kamyu.Status (badRequest)
@@ -51,6 +54,31 @@ jsonResponse = jsonResponseWith status200
 jsonResponseWith :: (ToJSON a) => Status -> a -> Response
 jsonResponseWith statusCode value =
   responseLBS statusCode [(hContentType, "application/json")] (encode value)
+
+-- | Parse JSON request body and return a JSON response with 200 OK.
+jsonOk ::
+  (FromJSON body, ToJSON result) =>
+  (body -> IO result) ->
+  KamyuHandler
+jsonOk = jsonWithStatus status200
+
+-- | Parse JSON request body and return a JSON response with 201 Created.
+jsonCreate ::
+  (FromJSON body, ToJSON result) =>
+  (body -> IO result) ->
+  KamyuHandler
+jsonCreate = jsonWithStatus status201
+
+-- | Parse JSON request body and return a JSON response with a fixed status.
+jsonWithStatus ::
+  (FromJSON body, ToJSON result) =>
+  Status ->
+  (body -> IO result) ->
+  KamyuHandler
+jsonWithStatus statusCode handler =
+  jsonHandler $ \body _ _ -> do
+    output <- handler body
+    pure (statusCode, output)
 
 -- | JSON worker: takes parsed body, Request and path params.
 jsonHandler ::
