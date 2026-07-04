@@ -51,6 +51,14 @@ def test_create_person():
     assert data["personAge"] == 30
     assert data["identifier"] == 1
 
+def test_create_user():
+    payload = {"createUserName": "Alice"}
+    resp = requests.post(f"{BASE_URL}/users", json=payload, headers=HEADERS)
+    assert resp.status_code == 201
+    data = resp.json()
+    assert data["userId"] == 1
+    assert data["userName"] == "Alice"
+
 def test_unauthorized():
     resp = requests.get(f"{BASE_URL}/user/42", headers={})
     assert resp.status_code == 403

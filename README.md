@@ -1,155 +1,274 @@
-# 🌊 Kamyu
+# Kamyu
 
 **Be simple, write less**
 
-Kamyu — это легкий и интуитивно понятный веб-фреймворк, который позволяет создавать веб-приложения на Haskell без необходимости глубокого погружения в сложные языковые концепции.
+Kamyu is a small Haskell web framework built on top of WAI and Warp. It focuses
+on a compact DSL for routes, request parameters, middleware, and JSON handlers.
 
-Основная идея: написать технологию, которой можно спокойно пользоваться не зная Haskell.
+The project is still experimental, but the goal is simple: make small Haskell
+web apps feel approachable.
 
-## 🚀 Быстрый старт
+## Quick Start
 
 ```haskell
-
 module Main where
 
-import Kamyu
+import Web.Kamyu
 
 main :: IO ()
-main = do
-    putStrLn "=== KAMYU START ==="
-    runKamyu 8080 $ do
-
-        get "/" $ \_ -> do
-            putStrLn "⭐ Handler for GET / called!"
-            return $ ok "SUCCESS! Kamyu is working!"
-
+main =
+  runKamyu 8080 $ do
+    get "/" $ \_ _ -> do
+      pure $ ok "SUCCESS! Kamyu is working!"
 ```
 
-## 📖 Документация
+Run the example app:
 
-1. Маршрутизация
+```shell
+stack run
+```
+
+## Routing
 
 ```haskell
 get "/" homeHandler
 post "/users" createUserHandler
-get "/users/:id" getUserHandler
+put "/users/:id" updateUserHandler
+delete "/users/:id" deleteUserHandler
+patch "/users/:id" patchUserHandler
 ```
 
-2. Параметры пути
+Handlers receive the original WAI `Request` and the matched path parameters:
 
 ```haskell
-get "/user/:id" $ \_ params -> do
-    let userId = pathParamDef "0" "id" params
-    return $ ok $ "User ID: " ++ userId
+homeHandler :: KamyuHandler
+homeHandler _ _ =
+  pure $ ok "Home is here"
 ```
 
-3. Query параметры
+## Path Parameters
+
+Dynamic path segments start with `:`.
 
 ```haskell
-get "/search" $ \req params -> do
-    let query = getString "q" req `orElse` ""
-        page = getInt "page" req `orElse` 1
-    return $ ok $ "Search: " ++ query ++ ", page: " ++ show page
+get "/users/:id" $ \_ params -> do
+  let userId = fromPath "id" params `orDefault` "0"
+  pure $ ok $ "User ID: " ++ userId
 ```
 
-4. JSON-обработчики
+Typed helpers are available for path parameters:
 
 ```haskell
-{-# LANGUAGE DeriveGeneric #-}
+get "/users/:id" $ \_ params -> do
+  let userId = fromPathInt "id" params `orDefault` 0
+  pure $ ok $ "User ID: " ++ show userId
+```
+
+## Query Parameters
+
+```haskell
+get "/search" $ \req _ -> do
+  let query = fromQuery "q" req `orElse` ""
+      page = fromQueryInt "page" req `orElse` 1
+  pure $ ok $ "Search: " ++ query ++ ", page: " ++ show page
+```
+
+Available query helpers:
+
+```haskell
+fromQuery       :: String -> Request -> Maybe String
+fromQueryInt    :: String -> Request -> Maybe Int
+fromQueryBool   :: String -> Request -> Maybe Bool
+fromQueryDouble :: String -> Request -> Maybe Double
+```
+
+## Nested Routes
+
+Use `path` to add a route prefix, `capture` to add a dynamic segment, and `root`
+to temporarily return to the root context.
+
+```haskell
+path "api" $ do
+  get "/status" $ \_ _ ->
+    pure $ ok "API is alive"
+
+  path "users" $
+    capture "id" $
+      get "/profile" $ \_ params -> do
+        let userId = fromPath "id" params `orDefault` "unknown"
+        pure $ ok $ "Profile: " ++ userId
+
+  root $
+    get "/health" $ \_ _ ->
+      pure $ ok "Server health"
+```
+
+This registers:
+
+```text
+GET /api/status
+GET /api/users/:id/profile
+GET /health
+```
+
+## JSON Helpers
+
+For simple JSON endpoints, define request/response types and a small function.
+
+```haskell
 {-# LANGUAGE DeriveAnyClass #-}
+{-# LANGUAGE DeriveGeneric #-}
 
-import Web.Kamyu.Json (jsonHandler, JsonCodec)
-import Web.Kamyu.Params (orElse, getString, pathParamDef)
+import GHC.Generics (Generic)
+import Web.Kamyu
+
+data CreateUser = CreateUser
+  { createUserName :: String
+  }
+  deriving (Show, Generic, JsonCodec)
+
+data User = User
+  { userId :: Int,
+    userName :: String
+  }
+  deriving (Show, Generic, JsonCodec)
+
+createUser :: CreateUser -> IO User
+createUser CreateUser {createUserName = name} =
+  pure $ User 1 name
+
+main :: IO ()
+main =
+  runKamyu 8080 $ do
+    post "/users" $ jsonCreate createUser
+```
+
+`jsonCreate` parses the request body as JSON, calls your function, serializes the
+result, sets `Content-Type: application/json`, and responds with `201 Created`.
+
+There are also variants for other cases:
+
+```haskell
+jsonOk         :: (body -> IO result) -> KamyuHandler
+jsonCreate     :: (body -> IO result) -> KamyuHandler
+jsonWithStatus :: Status -> (body -> IO result) -> KamyuHandler
+```
+
+For handlers that need query parameters, headers, or path parameters, use
+`jsonHandler`.
+
+```haskell
+{-# LANGUAGE DeriveAnyClass #-}
+{-# LANGUAGE DeriveGeneric #-}
+
 import GHC.Generics (Generic)
 import Network.HTTP.Types (Status, status201)
 import Network.Wai (Request)
+import Web.Kamyu
 
--- Что ожидаем получить в теле POST-запроса
-data CreatePerson = CreatePerson { name :: String, age :: Int }
-    deriving (Generic, JsonCodec)
+data CreatePerson = CreatePerson
+  { name :: String,
+    age :: Int
+  }
+  deriving (Show, Generic, JsonCodec)
 
--- Что вернём клиенту
-data Person = Person { identifier :: Int, fullName :: String, personAge :: Int }
-    deriving (Generic, JsonCodec)
+data Person = Person
+  { identifier :: Int,
+    fullName :: String,
+    personAge :: Int
+  }
+  deriving (Show, Generic, JsonCodec)
 
--- Универсальный обработчик: JSON + query + path params
-createPersonHandler :: CreatePerson -> Request -> [(String, String)] -> IO (Status, Person)
-createPersonHandler body req pathParams = do
-    let personName = name body
-        personAge = age body
-        sourceTag = orElse (getString "source" req) "api"
-        citySlug = pathParamDef "unknown" "city" pathParams
-    putStrLn $ "Source tag: " ++ sourceTag ++ ", city: " ++ citySlug
-    return (status201, Person 1 (personName ++ " from " ++ citySlug) personAge)
+createPerson :: CreatePerson -> Request -> [(String, String)] -> IO (Status, Person)
+createPerson CreatePerson {name = personName, age = personAgeVal} req pathParams = do
+  let city = fromPath "city" pathParams `orDefault` "unknown"
+      source = fromQuery "source" req `orElse` "api"
+      decoratedName = personName ++ " from " ++ city ++ " via " ++ source
+  pure (status201, Person 1 decoratedName personAgeVal)
 
--- jsonHandler createPersonHandler :: KamyuHandler
-post "/cities/:city/people" $ jsonHandler createPersonHandler
+main :: IO ()
+main =
+  runKamyu 8080 $ do
+    post "/cities/:city/people" $ jsonHandler createPerson
 ```
 
-`jsonHandler` сам десериализует тело запроса, передаёт распарсенный `CreatePerson`,
-исходный `Request` и path params. Обработчик возвращает пару `(HTTP Status, Person)` —
-можно игнорировать дополнительные аргументы или использовать их для чтения query
-параметров, заголовков и динамических сегментов пути. Kamyu автоматически
-сериализует результат и выставляет `Content-Type: application/json`.
+## Middleware
 
-5. Middleware (как Spring filters)
+Middleware is standard WAI middleware:
 
 ```haskell
-{-# LANGUAGE DeriveGeneric #-}
-{-# LANGUAGE DeriveAnyClass #-}
-
-import Web.Kamyu.Combinators (get, middleware)
-import Web.Kamyu.Core (Middleware)
-import Web.Kamyu.Status (ok, unauthorized)
-import Network.Wai (requestMethod, pathInfo, mapResponseHeaders, requestHeaders)
-import qualified Data.ByteString.Char8 as BS
-import qualified Data.CaseInsensitive as CI
-
-requestLogger :: Middleware
-requestLogger app req respond = do
-    putStrLn $ "[MW] " ++ BS.unpack (requestMethod req) ++ " " ++ show (pathInfo req)
-    app req respond
-
-poweredBy :: Middleware
-poweredBy app req respond =
-    app req $ \response -> respond (mapResponseHeaders (("X-Powered-By", "Kamyu") :) response)
-
-bearerAuth :: (BS.ByteString -> Bool) -> Middleware
-bearerAuth allow app req respond =
-    case lookup (CI.mk "Authorization") (requestHeaders req) of
-        Just header | "Bearer " `BS.isPrefixOf` header
-                    , let token = BS.drop 7 header
-                    , allow token -> app req respond
-        _ -> respond $ unauthorized "Missing or invalid token"
-
-main = runKamyu 8080 do
-    middleware requestLogger
-    middleware poweredBy
-    middleware (bearerAuth (== "super-secret"))
-    get "/" $ \_ _ -> return $ ok "Hello"
+type Middleware = Application -> Application
 ```
 
-`middleware` строит цепочку, аналогичную Spring фильтрам: логгер выполняется первым,
-затем фильтры, умеющие модифицировать ответ, и, наконец, защиты вроде `bearerAuth`.
-Если токен не проходит проверку, middleware завершает запрос сам — обработчики
-маршрутов даже не вызываются.
+Use `createMiddleware` to add middleware to the app.
 
-## 🛣️ Roadmap
+```haskell
+import Web.Kamyu
 
-✅ Базовая маршрутизация (GET, POST, PUT, DELETE)
+main :: IO ()
+main =
+  runKamyu 8080 $ do
+    createMiddleware logger
+    createMiddleware cors
+    createMiddleware $ poweredBy "Kamyu"
 
-✅ Простые HTTP-ответы
+    get "/" $ \_ _ ->
+      pure $ ok "Hello"
+```
 
-⏳ Удобные хелперы для статусов (ok, created, notFound)
+Middleware can also be built with conditions:
 
-✅ Парсинг параметров запроса
+```haskell
+main :: IO ()
+main =
+  runKamyu 8080 $ do
+    createMiddleware $
+      buildMiddleware $
+        use (auth (== "super-secret"))
+          |> exceptRoute "/"
+          |> exceptRoute "/health"
 
-🚧 Middleware поддержка
+    get "/" $ \_ _ ->
+      pure $ ok "Public"
 
-✅ JSON (де)сериализация
+    get "/private" $ \_ _ ->
+      pure $ ok "Private"
 
-🚧 Статические файлы
+    get "/health" $ \_ _ ->
+      pure $ ok "OK"
+```
 
+Built-in middleware helpers:
 
-> [!WARNING]
-> Это тестовая версия и она будет улучшаться
+```haskell
+logger    :: Middleware
+cors      :: Middleware
+poweredBy :: String -> Middleware
+auth      :: (ByteString -> Bool) -> Middleware
+```
+
+## Module Layout
+
+```text
+Web.Kamyu.Core         core types
+Web.Kamyu.Router       route registration and matching
+Web.Kamyu.Combinators  route DSL
+Web.Kamyu.Server       WAI/Warp application runner
+Web.Kamyu.Params       path and query parameter helpers
+Web.Kamyu.Json         JSON request/response helpers
+Web.Kamyu.Middleware   middleware builder and built-ins
+Web.Kamyu              public umbrella import
+```
+
+## Roadmap
+
+- Done: GET, POST, PUT, DELETE, PATCH routes
+- Done: path and query parameters
+- Done: nested route combinators
+- Done: middleware support
+- Done: JSON helpers
+- Next: route conflict detection
+- Next: static files
+- Next: better error responses
+
+> Kamyu is experimental and changing quickly.

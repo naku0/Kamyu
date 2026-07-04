@@ -26,6 +26,21 @@ data Person = Person
   }
   deriving (Show, Generic, JsonCodec)
 
+data CreateUser = CreateUser
+  { createUserName :: String
+  }
+  deriving (Show, Generic, JsonCodec)
+
+data User = User
+  { userId :: Int,
+    userName :: String
+  }
+  deriving (Show, Generic, JsonCodec)
+
+createUser :: CreateUser -> IO User
+createUser CreateUser {createUserName = requestedName} =
+  pure $ User 1 requestedName
+
 createPerson :: CreatePerson -> Request -> [(String, String)] -> IO (Status, Person)
 createPerson CreatePerson {name = personName, age = personAgeVal} req pathParams = do
   let city = pathParamDef "unknown" "city" pathParams
@@ -60,16 +75,17 @@ main = do
     get "/home" homeHandler
 
     get "/user/:id" $ \_ params -> do
-      let userId = fromPath "id" params `orDefault` "0"
-      return $ ok $ "User ID: " ++ userId
+      let requestedUserId = fromPath "id" params `orDefault` "0"
+      return $ ok $ "User ID: " ++ requestedUserId
 
     get "/search" $ \req _ -> do
       let query = fromQuery "q" req `orElse` ""
           page = fromQueryInt "page" req `orElse` 1
       return $ ok $ "Search: " ++ query ++ ", page: " ++ show page
 
+    post "/users" $ jsonCreate createUser
+
     post "/cities/:city/people" $ jsonHandler createPerson
 
     get "/health" \_ _ -> do
       return $ ok "Server health"
-
