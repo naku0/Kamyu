@@ -33,7 +33,7 @@ module Web.Kamyu.Params
   )
 where
 
-import Data.Char (isUpper, toLower)
+import Data.Char (toLower)
 import Data.Maybe (fromMaybe)
 import Data.Text (Text)
 import qualified Data.Text as T
@@ -159,8 +159,6 @@ fromPathBool name params = do
     "yes" -> Just True
     "no" -> Just False
     _ -> Nothing
-  where
-    toLower c = if isUpper c then toEnum (fromEnum c + 32) else c
 
 -- | Get path parameter as Maybe Double (new DSL)
 fromPathDouble :: String -> [(String, String)] -> Maybe Double

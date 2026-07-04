@@ -42,19 +42,17 @@ import Network.Wai
 import Web.Kamyu.Core (Middleware)
 import Web.Kamyu.Status (unauthorized)
 
-newtype MiddlewareBuilder = Builder
-  { unBuilder :: (Request -> Bool) -> Middleware
-  }
+newtype MiddlewareBuilder = Builder ((Request -> Bool) -> Middleware)
 
 use :: Middleware -> MiddlewareBuilder
 use mw = Builder $ const mw
 
 onlyIf :: (Request -> Bool) -> MiddlewareBuilder -> MiddlewareBuilder
-onlyIf pred (Builder builder) = Builder $ \cond ->
-  conditionalMiddleware (\req -> pred req && cond req) (builder cond)
+onlyIf predicate (Builder builder) = Builder $ \cond ->
+  conditionalMiddleware (\req -> predicate req && cond req) (builder cond)
 
 unless :: (Request -> Bool) -> MiddlewareBuilder -> MiddlewareBuilder
-unless pred = onlyIf (not . pred)
+unless predicate = onlyIf (not . predicate)
 
 forRoute :: String -> MiddlewareBuilder -> MiddlewareBuilder
 forRoute route = onlyIf (matchesRoute route)

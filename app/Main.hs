@@ -37,7 +37,6 @@ createPerson CreatePerson {name = personName, age = personAgeVal} req pathParams
 
 main :: IO ()
 main = do
-  putStrLn "=== KAMYU START ==="
   runKamyu 8080 $ do
     createMiddleware $
       buildMiddleware $
@@ -73,3 +72,4 @@ main = do
 
     get "/health" \_ _ -> do
       return $ ok "Server health"
+

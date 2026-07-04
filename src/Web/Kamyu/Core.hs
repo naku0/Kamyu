@@ -12,6 +12,8 @@ module Web.Kamyu.Core
     KamyuBuilder,
     addRoute,
     addMiddleware,
+    withPathContext,
+    withRootContext,
     PathSegment (..),
     matchRoute,
   )
@@ -91,10 +93,6 @@ splitPath path = filter (not . null) (splitOn '/' path)
               rest' = dropWhile (== delimiter) rest
            in part : go rest'
 
-----------------------------------------------------------------
--- ОБНОВЛЕННЫЙ addRoute
-----------------------------------------------------------------
-
 addRoute :: Method -> String -> KamyuHandler -> Kamyu ()
 addRoute method pathPattern handler = do
   currentState <- getKamyuState
@@ -109,11 +107,33 @@ addMiddleware mw = do
   let existing = middlewareChain currentState
   putKamyuState $ currentState {middlewareChain = existing <> [mw]}
 
+withPathContext :: String -> Kamyu a -> Kamyu a
+withPathContext pathPart (Kamyu action) = Kamyu $ do
+  currentState <- get
+  let previousContext = pathContext currentState
+      nextContext = previousContext <> parseContextPath pathPart
+  put currentState {pathContext = nextContext}
+  result <- action
+  updatedState <- get
+  put updatedState {pathContext = previousContext}
+  pure result
+
+withRootContext :: Kamyu a -> Kamyu a
+withRootContext (Kamyu action) = Kamyu $ do
+  currentState <- get
+  let previousContext = pathContext currentState
+  put currentState {pathContext = []}
+  result <- action
+  updatedState <- get
+  put updatedState {pathContext = previousContext}
+  pure result
+
 buildFullPath :: [String] -> String -> String
 buildFullPath context pathStr =
-  let contextStr = if null context then "" else "/" ++ intercalate "/" context
-      pathStr' = if "/" `isPrefixOf` pathStr then pathStr else "/" ++ pathStr
-   in contextStr ++ pathStr'
+  "/" ++ intercalate "/" (context <> splitPath pathStr)
+
+parseContextPath :: String -> [String]
+parseContextPath = splitPath
 
 -- | Проверить совпадение и извлечь параметры
 matchRoute :: [Text] -> [PathSegment] -> Maybe [(String, String)]

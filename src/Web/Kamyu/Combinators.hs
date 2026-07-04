@@ -18,6 +18,8 @@ import Web.Kamyu.Core
     Middleware,
     addMiddleware,
     addRoute,
+    withPathContext,
+    withRootContext,
   )
 
 get :: String -> KamyuHandler -> Kamyu ()
@@ -36,14 +38,13 @@ patch :: String -> KamyuHandler -> Kamyu ()
 patch = addRoute PATCH
 
 path :: String -> Kamyu a -> Kamyu a
-path = undefined
+path = withPathContext
 
 capture :: String -> Kamyu a -> Kamyu a
-capture = undefined
+capture name = withPathContext (':' : name)
 
--- TODO: some combinators for edsl
 root :: Kamyu a -> Kamyu a
-root = undefined
+root = withRootContext
 
 createMiddleware :: Middleware -> Kamyu ()
 createMiddleware = addMiddleware

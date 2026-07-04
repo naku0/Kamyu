@@ -2,9 +2,7 @@
 
 import Test.Hspec
 import Test.Hspec.Wai
-import Test.Hspec.Wai.JSON
-import Network.Wai (Application, Request(..), Response, requestMethod, pathInfo, Middleware, mapResponseHeaders)
-import Network.HTTP.Types (status200)
+import Network.Wai (Application, Middleware, mapResponseHeaders)
 import Web.Kamyu.Core hiding (Middleware)
 import Web.Kamyu.Server (kamyuApp)
 import qualified Web.Kamyu.Combinators as Kamyu
@@ -28,10 +26,24 @@ testRoutes = do
 
     Kamyu.get "/home" homeHandler
 
-    Kamyu.get "/search" $ \req params -> do
+    Kamyu.get "/search" $ \req _ -> do
         let query = getString "q" req `orElse` ""
             page = getInt "page" req `orElse` 1
         return $ ok $ "Search: " ++ query ++ ", page: " ++ show page
+
+    Kamyu.path "api" $ do
+        Kamyu.get "/status" $ \_ _ -> do
+            return $ ok "API is alive"
+
+        Kamyu.path "users" $
+            Kamyu.capture "id" $
+                Kamyu.get "/profile" $ \_ params -> do
+                    let userId = lookup "id" params `orElse` "unknown"
+                    return $ ok $ "Profile: " ++ userId
+
+        Kamyu.root $
+            Kamyu.get "/outside" $ \_ _ -> do
+                return $ ok "Outside api"
 
 buildTestApp :: IO Application
 buildTestApp = kamyuApp testRoutes
@@ -63,3 +75,16 @@ main = hspec $ with buildTestApp $ do
         describe "Middleware" $ do
             it "adds X-Test-Header to response" $ do
                 get "/" `shouldRespondWith` 200 { matchHeaders = ["X-Test-Header" <:> "KamyuTest"] }
+
+        describe "Nested route combinators" $ do
+            it "prefixes routes with path" $ do
+                get "/api/status" `shouldRespondWith` "API is alive" { matchStatus = 200 }
+
+            it "captures dynamic path segments" $ do
+                get "/api/users/42/profile" `shouldRespondWith` "Profile: 42" { matchStatus = 200 }
+
+            it "can temporarily return to root context" $ do
+                get "/outside" `shouldRespondWith` "Outside api" { matchStatus = 200 }
+
+            it "does not register root routes under the previous path context" $ do
+                get "/api/outside" `shouldRespondWith` 404

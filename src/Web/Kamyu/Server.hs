@@ -22,7 +22,6 @@ import Web.Kamyu.Core
     KamyuError,
     KamyuHandler,
     KamyuState (KamyuState, middlewareChain, routes),
-    Method (..),
     Middleware,
     PathSegment (..),
     Route (routeHandler, routeMethod, routePattern),
@@ -32,32 +31,35 @@ import Web.Kamyu.Status (notFound)
 
 kamyuApp :: KamyuBuilder -> IO Application
 kamyuApp builder = do
-  let initialState = KamyuState [] [] []
-  result <- runKamyuApp initialState builder
-  case result of
-    Left err -> error $ "Kamyu error: " ++ show err
-    Right (_, finalState) -> return $ createApp finalState
+  finalState <- buildKamyuState builder
+  return $ createApp finalState
 
 runKamyu :: Int -> KamyuBuilder -> IO ()
 runKamyu port builder = do
   putStrLn "🚀 Starting Kamyu server..."
-  app <- kamyuApp builder
+  finalState <- buildKamyuState builder
+  let app = createApp finalState
+  putStrLn "📊 Registered routes:"
+  mapM_ printRoute (routes finalState)
+  putStrLn $ "🌐 Server running on port " ++ show port
+  run port app
+  where
+    printRoute route =
+      let pathStr = renderRoutePattern (routePattern route)
+       in putStrLn $ "  " ++ show (routeMethod route) ++ " " ++ pathStr
+
+buildKamyuState :: KamyuBuilder -> IO KamyuState
+buildKamyuState builder = do
   let initialState = KamyuState [] [] []
   result <- runKamyuApp initialState builder
   case result of
     Left err -> error $ "Kamyu error: " ++ show err
-    Right (_, finalState) -> do
-      putStrLn "📊 Registered routes:"
-      mapM_ printRoute (routes finalState)
-      putStrLn $ "🌐 Server running on port " ++ show port
-      run port app
-  where
-    printRoute route =
-      let pathStr = case routePattern route of
-            [] -> "/"
-            segments -> concatMap showSegment segments
-       in putStrLn $ "  " ++ show (routeMethod route) ++ " " ++ pathStr
+    Right (_, finalState) -> return finalState
 
+renderRoutePattern :: [PathSegment] -> String
+renderRoutePattern [] = "/"
+renderRoutePattern segments = concatMap showSegment segments
+  where
     showSegment (Static s) = "/" ++ s
     showSegment (Dynamic s) = "/:" ++ s
 

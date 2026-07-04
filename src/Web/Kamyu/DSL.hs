@@ -8,9 +8,6 @@ module Web.Kamyu.DSL
   )
 where
 
-import Data.Aeson (ToJSON, encode)
-import qualified Data.ByteString.Lazy as LBS
-import Network.HTTP.Types (status200, status400)
 import Network.Wai (Request, Response)
 import Web.Kamyu.Core (KamyuHandler)
 import Web.Kamyu.Params
@@ -26,9 +23,9 @@ require ::
   String ->
   (a -> KamyuHandler) ->
   KamyuHandler
-require parser name handler req params =
+require parser name handler' req params =
   case parser req name of
-    Right val -> handler val req params
+    Right val -> handler' val req params
     Left err -> return $ badRequest (show err)
 
 -- | Optional parameter (handler receives Maybe)
@@ -37,7 +34,7 @@ optional ::
   String ->
   (Maybe a -> KamyuHandler) ->
   KamyuHandler
-optional getter name handler req = handler (getter req name) req
+optional getter name handler' req = handler' (getter req name) req
 
 ----------------------------------------------------------------
 -- SIMPLE HANDLER BUILDER
