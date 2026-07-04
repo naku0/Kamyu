@@ -1,9 +1,13 @@
+{-# LANGUAGE DeriveAnyClass #-}
+{-# LANGUAGE DeriveGeneric #-}
 {-# LANGUAGE OverloadedStrings #-}
 
+import GHC.Generics (Generic)
 import Test.Hspec
 import Test.Hspec.Wai
 import Network.Wai (Application, Middleware, mapResponseHeaders)
 import Web.Kamyu.Core hiding (Middleware)
+import Web.Kamyu.Json (JsonCodec, jsonCreate)
 import Web.Kamyu.Server (kamyuApp)
 import qualified Web.Kamyu.Combinators as Kamyu
 import Web.Kamyu.Status (ok)
@@ -17,9 +21,24 @@ testMiddleware app req respond = app req $ \res -> do
     let res' = mapResponseHeaders (("X-Test-Header", "KamyuTest") :) res
     respond res'
 
+data CreateUser = CreateUser
+    { createUserName :: String
+    }
+    deriving (Show, Generic, JsonCodec)
+
+data User = User
+    { userId :: Int,
+      userName :: String
+    }
+    deriving (Show, Generic, JsonCodec)
+
+createUser :: CreateUser -> IO User
+createUser CreateUser {createUserName = name} =
+    pure $ User 1 name
+
 testRoutes :: KamyuBuilder
 testRoutes = do
-    addMiddleware testMiddleware
+    Kamyu.createMiddleware testMiddleware
 
     Kamyu.get "/" $ \_ _ -> do
         return $ ok $ "SUCCESS! Kamyu is working!"
@@ -38,12 +57,14 @@ testRoutes = do
         Kamyu.path "users" $
             Kamyu.capture "id" $
                 Kamyu.get "/profile" $ \_ params -> do
-                    let userId = lookup "id" params `orElse` "unknown"
-                    return $ ok $ "Profile: " ++ userId
+                    let profileId = lookup "id" params `orElse` "unknown"
+                    return $ ok $ "Profile: " ++ profileId
 
         Kamyu.root $
             Kamyu.get "/outside" $ \_ _ -> do
                 return $ ok "Outside api"
+
+    Kamyu.post "/users" $ jsonCreate createUser
 
 buildTestApp :: IO Application
 buildTestApp = kamyuApp testRoutes
@@ -88,3 +109,8 @@ main = hspec $ with buildTestApp $ do
 
             it "does not register root routes under the previous path context" $ do
                 get "/api/outside" `shouldRespondWith` 404
+
+        describe "JSON helpers" $ do
+            it "creates a resource from a JSON body" $ do
+                request "POST" "/users" [("Content-Type", "application/json")] "{\"createUserName\":\"Alice\"}"
+                    `shouldRespondWith` "{\"userId\":1,\"userName\":\"Alice\"}" { matchStatus = 201 }
